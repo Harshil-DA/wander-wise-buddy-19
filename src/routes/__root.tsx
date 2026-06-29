@@ -78,11 +78,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Wanderly — Your Friendly Trip Planner" },
-      { name: "description", content: "Plan domestic and international trips, hikes, and relaxed vacays with a friendly AI travel buddy." },
+      { name: "description", content: "\"Ditch the travel agent. Fire your group chat. Let AI build your next core memory.\"" },
       { property: "og:title", content: "Wanderly — Your Friendly Trip Planner" },
-      { property: "og:description", content: "Itineraries, budgets, booking links, packing lists & local phrases — all in one chat." },
+      { property: "og:description", content: "\"Ditch the travel agent. Fire your group chat. Let AI build your next core memory.\"" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Wanderly — Your Friendly Trip Planner" },
+      { name: "twitter:description", content: "\"Ditch the travel agent. Fire your group chat. Let AI build your next core memory.\"" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6b0e5350-0813-4c2c-9171-bb53e13b388d/id-preview-caa8e8eb--38bec11f-535e-46d9-9e77-3addbb01890d.lovable.app-1782706442520.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6b0e5350-0813-4c2c-9171-bb53e13b388d/id-preview-caa8e8eb--38bec11f-535e-46d9-9e77-3addbb01890d.lovable.app-1782706442520.png" },
     ],
     links: [
       {
