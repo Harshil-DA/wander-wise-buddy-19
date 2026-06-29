@@ -77,14 +77,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Wanderly — Your Friendly Trip Planner" },
+      { name: "description", content: "Plan domestic and international trips, hikes, and relaxed vacays with a friendly AI travel buddy." },
+      { property: "og:title", content: "Wanderly — Your Friendly Trip Planner" },
+      { property: "og:description", content: "Itineraries, budgets, booking links, packing lists & local phrases — all in one chat." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
