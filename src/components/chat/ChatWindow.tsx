@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Send, Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
+import { SaveTripPanel } from "./SaveTripPanel";
 import { toast } from "sonner";
 
 const SUGGESTIONS = [
