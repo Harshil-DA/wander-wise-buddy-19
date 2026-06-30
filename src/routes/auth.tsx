@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Sign in — Wanderly Trip Planner" },

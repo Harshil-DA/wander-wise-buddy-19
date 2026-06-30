@@ -91,3 +91,108 @@ export const saveUserMessage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ---------- Saved trips & partner-tour matching ----------
+
+const itinerarySchema = z.object({
+  days: z
+    .array(
+      z.object({
+        day: z.number().optional(),
+        date: z.string().optional(),
+        location: z.string().optional(),
+        activities: z
+          .array(
+            z.object({
+              time: z.string().optional(),
+              activity: z.string(),
+              estimated_cost_usd: z.number().optional(),
+              geocoordinates: z
+                .object({ lat: z.number(), lng: z.number() })
+                .optional(),
+            }),
+          )
+          .default([]),
+      }),
+    )
+    .min(1),
+});
+
+const saveTripInput = z.object({
+  threadId: z.string().uuid().optional(),
+  destination: z.string().min(1).max(200),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  budget: z.number().nonnegative().optional(),
+  currency: z.string().min(1).max(8).default("USD"),
+  tripType: z.string().max(80).optional(),
+  notes: z.string().max(2000).optional(),
+  itinerary: itinerarySchema.optional(),
+});
+
+export const saveTrip = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => saveTripInput.parse(d))
+  .handler(async ({ context, data }) => {
+    const { data: row, error } = await context.supabase
+      .from("trips")
+      .insert({
+        user_id: context.userId,
+        source_thread_id: data.threadId ?? null,
+        destination: data.destination,
+        start_date: data.startDate ?? null,
+        end_date: data.endDate ?? null,
+        budget: data.budget ?? null,
+        currency: data.currency,
+        trip_type: data.tripType ?? null,
+        notes: data.notes ?? null,
+        itinerary_json: data.itinerary ?? null,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id as string };
+  });
+
+const matchInput = z.object({
+  destination: z.string().min(1).max(200),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+export const findMatchingTours = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => matchInput.parse(d))
+  .handler(async ({ data }) => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
+
+    // Fuzzy destination match on first significant word (e.g. "Bali, Indonesia" -> "bali")
+    const token = data.destination
+      .split(/[,\-\/]/)[0]
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length > 2)[0];
+    const needle = (token ?? data.destination).toLowerCase();
+
+    let q = supabase
+      .from("agency_tours")
+      .select(
+        "id, agency_name, title, destination, description, start_date, end_date, duration_days, price, currency, difficulty, booking_url, tags",
+      )
+      .ilike("destination", `%${needle}%`)
+      .order("start_date", { ascending: true })
+      .limit(10);
+
+    if (data.startDate && data.endDate) {
+      // Overlap: tour.start_date <= tripEnd AND tour.end_date >= tripStart
+      q = q.lte("start_date", data.endDate).gte("end_date", data.startDate);
+    }
+
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });

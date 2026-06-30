@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      agency_tours: {
+        Row: {
+          agency_name: string
+          booking_url: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          destination: string
+          difficulty: string | null
+          duration_days: number | null
+          end_date: string
+          id: string
+          price: number | null
+          start_date: string
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          agency_name: string
+          booking_url?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          destination: string
+          difficulty?: string | null
+          duration_days?: number | null
+          end_date: string
+          id?: string
+          price?: number | null
+          start_date: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          agency_name?: string
+          booking_url?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          destination?: string
+          difficulty?: string | null
+          duration_days?: number | null
+          end_date?: string
+          id?: string
+          price?: number | null
+          start_date?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           created_at: string
@@ -49,6 +103,30 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       threads: {
         Row: {
           created_at: string
@@ -73,15 +151,98 @@ export type Database = {
         }
         Relationships: []
       }
+      trips: {
+        Row: {
+          budget: number | null
+          created_at: string
+          currency: string
+          destination: string
+          end_date: string | null
+          id: string
+          itinerary_json: Json | null
+          notes: string | null
+          source_thread_id: string | null
+          start_date: string | null
+          trip_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget?: number | null
+          created_at?: string
+          currency?: string
+          destination: string
+          end_date?: string | null
+          id?: string
+          itinerary_json?: Json | null
+          notes?: string | null
+          source_thread_id?: string | null
+          start_date?: string | null
+          trip_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget?: number | null
+          created_at?: string
+          currency?: string
+          destination?: string
+          end_date?: string | null
+          id?: string
+          itinerary_json?: Json | null
+          notes?: string | null
+          source_thread_id?: string | null
+          start_date?: string | null
+          trip_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_source_thread_id_fkey"
+            columns: ["source_thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -208,6 +369,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const

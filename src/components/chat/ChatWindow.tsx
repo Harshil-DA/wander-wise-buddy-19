@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Send, Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
+import { SaveTripPanel } from "./SaveTripPanel";
 import { toast } from "sonner";
 
 const SUGGESTIONS = [
@@ -142,9 +143,18 @@ function ChatInner({
             </div>
           )}
 
-          {messages.map((m) => (
-            <MessageBubble key={m.id} message={m} />
-          ))}
+          {messages.map((m, i) => {
+            const isLast = i === messages.length - 1;
+            const text = m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
+            return (
+              <div key={m.id}>
+                <MessageBubble message={m} />
+                {m.role === "assistant" && isLast && status !== "streaming" && (
+                  <SaveTripPanel threadId={threadId} assistantText={text} />
+                )}
+              </div>
+            );
+          })}
 
           {status === "submitted" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
