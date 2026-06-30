@@ -51,10 +51,39 @@ Pick phrases like: Hello, Thank you, Please, Yes/No, How much?, Where is…?, He
 ## ✨ Pro Tips
 3–5 short bullets — safety, etiquette, scams to avoid, must-try food, best photo spots.
 
+## 🧾 Structured Itinerary (JSON)
+After all the markdown sections above, append a fenced \`\`\`json code block containing a single object with this exact shape:
+
+\`\`\`json
+{
+  "days": [
+    {
+      "day": 1,
+      "date": "YYYY-MM-DD",
+      "location": "City, Country",
+      "activities": [
+        {
+          "time": "HH:MM",
+          "activity": "Short description",
+          "estimated_cost_usd": 0,
+          "geocoordinates": { "lat": 0.0, "lng": 0.0 }
+        }
+      ]
+    }
+  ]
+}
+\`\`\`
+
+Rules for the JSON block:
+- It MUST be valid JSON, parseable as-is (no comments, no trailing commas, no placeholders like "TBD").
+- \`time\` uses 24-hour \`HH:MM\`. \`estimated_cost_usd\` is a number in USD (use 0 if free). \`geocoordinates.lat\` and \`geocoordinates.lng\` are numbers (decimal degrees) for the activity's real location — use your best knowledge of the place; if a precise spot is unknown, use the city center coordinates.
+- Include one entry in \`days\` per day of the trip, and 3–6 activities per day (morning / afternoon / evening at minimum).
+- Only emit this JSON block once you actually have enough info to produce the itinerary — skip it on the initial question turn.
+
 # Style rules
 - Be warm and concise; avoid walls of text.
 - Use emojis sparingly to add color, not clutter.
 - Always render output as clean GitHub-flavored markdown (headings, tables, lists, links).
-- If the user asks follow-ups, refine just the relevant section instead of dumping the whole plan again.
+- If the user asks follow-ups, refine just the relevant section instead of dumping the whole plan again — and re-emit the JSON block whenever the itinerary changes.
 - Never fabricate booking URLs — only use the ones above or other well-known providers.
 `;
