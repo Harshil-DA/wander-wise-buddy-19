@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { saveTrip, findMatchingTours } from "@/lib/trips.functions";
 import { toast } from "sonner";
-import { Loader2, Save, Sparkles, ExternalLink } from "lucide-react";
+import { Loader2, Save, Sparkles } from "lucide-react";
+import { MatchingToursCard, type MatchedTour } from "@/components/trips/MatchingToursCard";
 
 type Itinerary = {
   days: Array<{
@@ -16,22 +17,6 @@ type Itinerary = {
       geocoordinates?: { lat: number; lng: number };
     }>;
   }>;
-};
-
-type Tour = {
-  id: string;
-  agency_name: string;
-  title: string;
-  destination: string;
-  description: string | null;
-  start_date: string;
-  end_date: string;
-  duration_days: number | null;
-  price: number | null;
-  currency: string;
-  difficulty: string | null;
-  booking_url: string | null;
-  tags: string[];
 };
 
 function extractItinerary(text: string): Itinerary | null {
@@ -59,7 +44,8 @@ export function SaveTripPanel({
   const itinerary = useMemo(() => extractItinerary(assistantText), [assistantText]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [tours, setTours] = useState<Tour[] | null>(null);
+  const [tripId, setTripId] = useState<string | undefined>();
+  const [tours, setTours] = useState<MatchedTour[] | null>(null);
 
   if (!itinerary) return null;
 
@@ -74,7 +60,7 @@ export function SaveTripPanel({
   const onSave = async () => {
     setSaving(true);
     try {
-      await save({
+      const { id } = (await save({
         data: {
           threadId,
           destination,
@@ -84,12 +70,14 @@ export function SaveTripPanel({
           currency: "USD",
           itinerary,
         },
-      });
+      })) as { id: string };
+      setTripId(id);
       setSaved(true);
       toast.success("Trip saved! 🧳");
-      const matched = (await match({ data: { destination, startDate, endDate } })) as Tour[];
+      const matched = (await match({
+        data: { destination, startDate, endDate },
+      })) as MatchedTour[];
       setTours(matched);
-      if (matched.length === 0) toast.message("No partner tours overlap these dates (yet).");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save trip");
     } finally {
@@ -98,64 +86,41 @@ export function SaveTripPanel({
   };
 
   return (
-    <div className="mt-4 rounded-2xl border bg-card p-4">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="text-sm">
-          <div className="font-semibold">📍 {destination}</div>
-          <div className="text-muted-foreground">
-            {startDate ?? "?"} → {endDate ?? "?"} · ~${budget.toFixed(0)} est.
+    <div className="mt-4 space-y-4">
+      <div className="rounded-2xl border bg-card p-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="text-sm">
+            <div className="font-semibold">📍 {destination}</div>
+            <div className="text-muted-foreground">
+              {startDate ?? "?"} → {endDate ?? "?"} · ~${budget.toFixed(0)} est.
+            </div>
           </div>
+          <button
+            onClick={onSave}
+            disabled={saving || saved}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-3 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : saved ? (
+              <Sparkles className="size-4" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            {saved ? "Saved" : "Save trip & find partners"}
+          </button>
         </div>
-        <button
-          onClick={onSave}
-          disabled={saving || saved}
-          className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-3 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-        >
-          {saving ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : saved ? (
-            <Sparkles className="size-4" />
-          ) : (
-            <Save className="size-4" />
-          )}
-          {saved ? "Saved" : "Save trip & find partners"}
-        </button>
       </div>
 
-      {tours && tours.length > 0 && (
-        <div className="mt-4">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-            🤝 Partner tours overlapping your dates
-          </div>
-          <ul className="space-y-2">
-            {tours.map((t) => (
-              <li
-                key={t.id}
-                className="rounded-xl border bg-background/60 p-3 text-sm flex items-start justify-between gap-3"
-              >
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{t.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {t.agency_name} · {t.destination} · {t.start_date} → {t.end_date}
-                    {t.price ? ` · ${t.currency} ${t.price}` : ""}
-                    {t.difficulty ? ` · ${t.difficulty}` : ""}
-                  </div>
-                </div>
-                {t.booking_url && (
-                  <a
-                    href={t.booking_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 inline-flex items-center gap-1 text-primary hover:underline text-xs"
-                  >
-                    Book <ExternalLink className="size-3" />
-                  </a>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {(saving || tours) && (
+        <MatchingToursCard
+          tours={tours}
+          loading={saving && !tours}
+          tripId={tripId}
+          destination={destination}
+        />
       )}
     </div>
   );
 }
+
