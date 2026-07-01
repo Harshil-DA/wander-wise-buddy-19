@@ -45,6 +45,13 @@ function AuthPage() {
         });
         if (error) throw error;
         toast.success("Check your inbox to confirm your email 📬");
+      } else if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("Password reset link sent — check your inbox 📬");
+        setMode("signin");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -56,6 +63,7 @@ function AuthPage() {
       setLoading(false);
     }
   };
+
 
   const google = async () => {
     setLoading(true);
