@@ -181,7 +181,7 @@ export const findMatchingTours = createServerFn({ method: "POST" })
     let q = supabase
       .from("agency_tours")
       .select(
-        "id, agency_name, title, destination, description, start_date, end_date, duration_days, price, currency, difficulty, booking_url, tags",
+        "id, agency_name, title, destination, description, start_date, end_date, duration_days, price, currency, difficulty, booking_url, tags, contact_email, contact_phone, contact_website",
       )
       .ilike("destination", `%${needle}%`)
       .order("start_date", { ascending: true })
@@ -196,3 +196,57 @@ export const findMatchingTours = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
+
+// ---------- Dashboard: saved trips ----------
+
+export const listTrips = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("trips")
+      .select(
+        "id, destination, start_date, end_date, budget, currency, trip_type, notes, itinerary_json, created_at",
+      )
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+// ---------- Lead capture ----------
+
+const leadInput = z.object({
+  tourId: z.string().uuid(),
+  tripId: z.string().uuid().optional(),
+  message: z.string().max(1000).optional(),
+});
+
+export const createAgencyLead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => leadInput.parse(d))
+  .handler(async ({ context, data }) => {
+    // Log the lead (RLS enforces user_id = auth.uid())
+    const { data: lead, error } = await context.supabase
+      .from("agency_leads")
+      .insert({
+        user_id: context.userId,
+        tour_id: data.tourId,
+        trip_id: data.tripId ?? null,
+        message: data.message ?? null,
+      })
+      .select("id, status, created_at")
+      .single();
+    if (error) throw new Error(error.message);
+
+    // Reveal agency contact details now that the lead is on record
+    const { data: tour, error: tourErr } = await context.supabase
+      .from("agency_tours")
+      .select(
+        "id, agency_name, title, contact_email, contact_phone, contact_website, booking_url",
+      )
+      .eq("id", data.tourId)
+      .single();
+    if (tourErr) throw new Error(tourErr.message);
+
+    return { lead, contact: tour };
+  });
+
