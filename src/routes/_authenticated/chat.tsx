@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
-import { Plus, Trash2, LogOut, Compass } from "lucide-react";
+import { Plus, Trash2, LogOut, Compass, Luggage } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -96,11 +96,19 @@ function ChatLayout() {
             <p className="text-xs text-muted-foreground">Your trip buddy ✈️</p>
           </div>
         </div>
-        <div className="p-3">
+        <div className="p-3 space-y-2">
           <Button onClick={newTrip} className="w-full" size="sm">
             <Plus className="size-4" /> New trip
           </Button>
+          <Link
+            to="/trips"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent/60"
+          >
+            <Luggage className="size-4" /> My trips
+          </Link>
         </div>
+
         <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
           {threadsQ.data?.map((t) => {
             const active = t.id === activeThreadId;
