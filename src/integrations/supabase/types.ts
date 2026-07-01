@@ -14,10 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      agency_leads: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          status: string
+          tour_id: string
+          trip_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          status?: string
+          tour_id: string
+          trip_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          status?: string
+          tour_id?: string
+          trip_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_leads_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "agency_tours"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_leads_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_tours: {
         Row: {
           agency_name: string
           booking_url: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          contact_website: string | null
           created_at: string
           currency: string
           description: string | null
@@ -35,6 +86,9 @@ export type Database = {
         Insert: {
           agency_name: string
           booking_url?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_website?: string | null
           created_at?: string
           currency?: string
           description?: string | null
@@ -52,6 +106,9 @@ export type Database = {
         Update: {
           agency_name?: string
           booking_url?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_website?: string | null
           created_at?: string
           currency?: string
           description?: string | null
