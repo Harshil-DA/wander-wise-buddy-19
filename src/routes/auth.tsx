@@ -21,10 +21,11 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -44,6 +45,13 @@ function AuthPage() {
         });
         if (error) throw error;
         toast.success("Check your inbox to confirm your email 📬");
+      } else if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("Password reset link sent — check your inbox 📬");
+        setMode("signin");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -55,6 +63,7 @@ function AuthPage() {
       setLoading(false);
     }
   };
+
 
   const google = async () => {
     setLoading(true);
@@ -109,32 +118,60 @@ function AuthPage() {
               autoFocus
             />
           </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+          {mode !== "forgot" && (
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          )}
           <Button type="submit" className="w-full" disabled={loading}>
-            {mode === "signup" ? "Create account" : "Sign in"}
+            {mode === "signup"
+              ? "Create account"
+              : mode === "forgot"
+                ? "Send reset link"
+                : "Sign in"}
           </Button>
         </form>
 
-        <button
-          type="button"
-          className="mt-4 w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-        >
-          {mode === "signin"
-            ? "New here? Create an account →"
-            : "Already have an account? Sign in →"}
-        </button>
+        <div className="mt-4 space-y-2 text-center">
+          {mode === "signin" && (
+            <button
+              type="button"
+              className="block w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setMode("forgot")}
+            >
+              Forgot your password?
+            </button>
+          )}
+          <button
+            type="button"
+            className="block w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() =>
+              setMode(
+                mode === "forgot"
+                  ? "signin"
+                  : mode === "signin"
+                    ? "signup"
+                    : "signin",
+              )
+            }
+          >
+            {mode === "forgot"
+              ? "← Back to sign in"
+              : mode === "signin"
+                ? "New here? Create an account →"
+                : "Already have an account? Sign in →"}
+          </button>
+        </div>
       </div>
     </div>
   );
+
 }
