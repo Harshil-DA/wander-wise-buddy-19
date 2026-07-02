@@ -107,6 +107,13 @@ function ChatLayout() {
           >
             <Luggage className="size-4" /> My trips
           </Link>
+          <Link
+            to="/admin"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent/60"
+          >
+            <Shield className="size-4" /> Admin
+          </Link>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
