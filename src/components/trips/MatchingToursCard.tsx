@@ -58,6 +58,14 @@ export function MatchingToursCard({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, Contact>>({});
 
+  console.log("[MatchingToursCard] props →", {
+    destination,
+    tripId,
+    loading,
+    tourCount: tours?.length ?? null,
+    tours,
+  });
+
   const onConnect = async (tour: MatchedTour) => {
     setBusyId(tour.id);
     try {
