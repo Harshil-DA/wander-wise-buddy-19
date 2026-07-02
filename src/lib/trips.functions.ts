@@ -160,6 +160,33 @@ const matchInput = z.object({
   endDate: z.string().optional(),
 });
 
+// Robust date parser: handles ISO (YYYY-MM-DD), DD/MM/YYYY, DD-MM-YYYY,
+// and casual formats like "Oct 12" / "October 12, 2026" / "12 Oct 2026".
+function parseFlexibleDate(input?: string | null, fallbackYear?: number): Date | null {
+  if (!input) return null;
+  const s = String(input).trim();
+  if (!s) return null;
+
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) return new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]));
+
+  const dmy = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (dmy) {
+    let y = +dmy[3];
+    if (y < 100) y += 2000;
+    return new Date(Date.UTC(y, +dmy[2] - 1, +dmy[1]));
+  }
+
+  const withYear = /\b\d{4}\b/.test(s)
+    ? s
+    : `${s} ${fallbackYear ?? new Date().getUTCFullYear()}`;
+  const parsed = new Date(withYear);
+  if (!Number.isNaN(parsed.getTime())) {
+    return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+  }
+  return null;
+}
+
 export const findMatchingTours = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => matchInput.parse(d))
   .handler(async ({ data }) => {
@@ -178,23 +205,47 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       .filter((w) => w.length > 2)[0];
     const needle = (token ?? data.destination).toLowerCase();
 
-    let q = supabase
+    console.log("[findMatchingTours] input:", data, "needle:", needle);
+
+    const { data: rows, error } = await supabase
       .from("agency_tours")
       .select(
         "id, agency_name, title, destination, description, start_date, end_date, duration_days, price, currency, difficulty, booking_url, tags, contact_email, contact_phone, contact_website",
       )
       .ilike("destination", `%${needle}%`)
       .order("start_date", { ascending: true })
-      .limit(10);
+      .limit(50);
 
-    if (data.startDate && data.endDate) {
-      // Overlap: tour.start_date <= tripEnd AND tour.end_date >= tripStart
-      q = q.lte("start_date", data.endDate).gte("end_date", data.startDate);
-    }
-
-    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    console.log("[findMatchingTours] destination-matched rows:", rows?.length ?? 0);
+
+    // Relaxed JS-side date-overlap. If either user date is missing/unparseable,
+    // skip the date filter entirely so tours still surface.
+    const tripStart = parseFlexibleDate(data.startDate);
+    const tripEnd = parseFlexibleDate(data.endDate ?? data.startDate);
+    console.log("[findMatchingTours] parsed trip range:", tripStart, "→", tripEnd);
+
+    const filtered = (rows ?? []).filter((r) => {
+      if (!tripStart || !tripEnd) return true;
+      const ts = parseFlexibleDate(r.start_date);
+      const te = parseFlexibleDate(r.end_date);
+      if (!ts || !te) return true;
+      const overlap =
+        ts.getTime() <= tripEnd.getTime() && te.getTime() >= tripStart.getTime();
+      console.log(
+        "[findMatchingTours] tour",
+        r.agency_name,
+        r.start_date,
+        "→",
+        r.end_date,
+        "overlap?",
+        overlap,
+      );
+      return overlap;
+    });
+
+    console.log("[findMatchingTours] returning:", filtered.length);
+    return filtered.slice(0, 10);
   });
 
 // ---------- Dashboard: saved trips ----------
