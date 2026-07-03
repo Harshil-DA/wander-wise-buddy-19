@@ -3,7 +3,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { saveTrip, findMatchingTours } from "@/lib/trips.functions";
 import { toast } from "sonner";
 import { Loader2, Save, Sparkles } from "lucide-react";
-import { MatchingToursCard, type MatchedTour } from "@/components/trips/MatchingToursCard";
+import {
+  MatchingToursCard,
+  type TourMatchResponse,
+} from "@/components/trips/MatchingToursCard";
 
 type Itinerary = {
   days: Array<{
@@ -45,7 +48,7 @@ export function SaveTripPanel({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [tripId, setTripId] = useState<string | undefined>();
-  const [tours, setTours] = useState<MatchedTour[] | null>(null);
+  const [matches, setMatches] = useState<TourMatchResponse | null>(null);
 
   if (!itinerary) return null;
 
@@ -76,8 +79,8 @@ export function SaveTripPanel({
       toast.success("Trip saved! 🧳");
       const matched = (await match({
         data: { destination, startDate, endDate },
-      })) as MatchedTour[];
-      setTours(matched);
+      })) as TourMatchResponse;
+      setMatches(matched);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save trip");
     } finally {
@@ -112,10 +115,10 @@ export function SaveTripPanel({
         </div>
       </div>
 
-      {(saving || tours) && (
+      {(saving || matches) && (
         <MatchingToursCard
-          tours={tours}
-          loading={saving && !tours}
+          matches={matches}
+          loading={saving && !matches}
           tripId={tripId}
           destination={destination}
         />
