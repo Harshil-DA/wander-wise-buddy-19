@@ -162,6 +162,20 @@ const matchInput = z.object({
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const DESTINATION_STOPWORDS = new Set([
+  "and",
+  "the",
+  "city",
+  "trip",
+  "tour",
+  "vacation",
+  "holiday",
+  "region",
+  "state",
+  "province",
+  "country",
+]);
+
 const MONTHS: Record<string, number> = {
   jan: 0,
   january: 0,
@@ -264,6 +278,68 @@ function dateOverlaps(userStart: Date, userEnd: Date, agencyStart: Date, agencyE
   return userStart.getTime() <= agencyEnd.getTime() && userEnd.getTime() >= agencyStart.getTime();
 }
 
+function tokenizeDestination(destination: string) {
+  return destination
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !DESTINATION_STOPWORDS.has(token));
+}
+
+function destinationMatches(userDestination: string, agencyDestination: string | null) {
+  if (!agencyDestination) return false;
+  const userTokens = tokenizeDestination(userDestination);
+  const agencyTokens = tokenizeDestination(agencyDestination);
+  const normalizedUser = userTokens.join(" ");
+  const normalizedAgency = agencyTokens.join(" ");
+
+  if (!userTokens.length || !agencyTokens.length) {
+    return userDestination.trim().toLowerCase() === agencyDestination.trim().toLowerCase();
+  }
+
+  return (
+    userTokens.some((token) => agencyTokens.includes(token) || normalizedAgency.includes(token)) ||
+    agencyTokens.some((token) => normalizedUser.includes(token))
+  );
+}
+
+function movePastUserRangeToFuture(start: Date | null, end: Date | null) {
+  if (!start || !end) return { start, end, shiftedYears: 0 };
+  const today = cleanUtcDate(
+    new Date().getUTCFullYear(),
+    new Date().getUTCMonth(),
+    new Date().getUTCDate(),
+  )!;
+  const shiftedStart = new Date(start.getTime());
+  const shiftedEnd = new Date(end.getTime());
+  let shiftedYears = 0;
+
+  while (shiftedEnd.getTime() < today.getTime() && shiftedYears < 10) {
+    shiftedStart.setUTCFullYear(shiftedStart.getUTCFullYear() + 1);
+    shiftedEnd.setUTCFullYear(shiftedEnd.getUTCFullYear() + 1);
+    shiftedYears += 1;
+  }
+
+  return { start: shiftedStart, end: shiftedEnd, shiftedYears };
+}
+
+function uniqueTours<T extends { agency_name: string; title: string; destination: string; start_date: string; end_date: string }>(
+  tours: T[],
+) {
+  const seen = new Set<string>();
+  return tours.filter((tour) => {
+    const key = [tour.agency_name, tour.title, tour.destination, tour.start_date, tour.end_date]
+      .map((part) => part.toLowerCase())
+      .join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export const findMatchingTours = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => matchInput.parse(d))
   .handler(async ({ data }) => {
@@ -274,48 +350,58 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
 
-    // Fuzzy destination match on first significant word (e.g. "Bali, Indonesia" -> "bali")
-    const token = data.destination
-      .split(/[,\-\/]/)[0]
-      .trim()
-      .split(/\s+/)
-      .filter((w) => w.length > 2)[0];
-    const needle = (token ?? data.destination).toLowerCase();
+    const destinationTokens = tokenizeDestination(data.destination);
 
-    console.log("[findMatchingTours] input:", data, "needle:", needle);
+    console.log("[findMatchingTours] input:", data, "destinationTokens:", destinationTokens);
 
-    const { data: rows, error } = await supabase
+    const { data: allRows, error } = await supabase
       .from("agency_tours")
       .select(
         "id, agency_name, title, destination, description, start_date, end_date, duration_days, price, currency, difficulty, booking_url, tags, contact_email, contact_phone, contact_website",
       )
-      .ilike("destination", `%${needle}%`)
       .order("start_date", { ascending: true })
-      .limit(50);
+      .limit(250);
 
     if (error) throw new Error(error.message);
-    console.log("[findMatchingTours] destination-matched rows:", rows?.length ?? 0);
+    console.log("[findMatchingTours] fetched agency rows:", allRows?.length ?? 0);
+
+    const rows = (allRows ?? []).filter((tour) => destinationMatches(data.destination, tour.destination));
+    console.log(
+      "[findMatchingTours] destination-matched rows:",
+      rows.length,
+      rows.map((tour) => ({ agency: tour.agency_name, destination: tour.destination })),
+    );
 
     const parsedTripStart = parseCleanDate(data.startDate);
     const parsedTripEnd = parseCleanDate(
       data.endDate ?? data.startDate,
       parsedTripStart?.getUTCFullYear(),
     );
-    const { start: tripStart, end: tripEnd } = normalizeDateRange(
+    const normalizedTripRange = normalizeDateRange(
       parsedTripStart,
       parsedTripEnd,
     );
+    const {
+      start: tripStart,
+      end: tripEnd,
+      shiftedYears,
+    } = movePastUserRangeToFuture(normalizedTripRange.start, normalizedTripRange.end);
     console.log("[findMatchingTours] clean trip range:", tripStart, "→", tripEnd);
+    if (shiftedYears > 0) {
+      console.log(
+        `[findMatchingTours] shifted past user dates forward by ${shiftedYears} year(s) for future tour matching`,
+      );
+    }
 
     if (!tripStart || !tripEnd) {
       console.log(
         "[findMatchingTours] user dates missing/unparseable; returning destination recommendations",
       );
-      return { exact: [], recommended: (rows ?? []).slice(0, 10) };
+      return { exact: [], recommended: uniqueTours(rows).slice(0, 10) };
     }
 
-    const exact: NonNullable<typeof rows> = [];
-    const recommended: NonNullable<typeof rows> = [];
+    const exact: typeof rows = [];
+    const recommended: typeof rows = [];
     const windowStart = new Date(tripStart.getTime() - 7 * DAY_MS);
     const windowEnd = new Date(tripEnd.getTime() + 7 * DAY_MS);
 
@@ -360,8 +446,8 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       recommended: exact.length === 0 ? recommended.length : 0,
     });
     return {
-      exact: exact.slice(0, 10),
-      recommended: exact.length === 0 ? recommended.slice(0, 10) : [],
+      exact: uniqueTours(exact).slice(0, 10),
+      recommended: exact.length === 0 ? uniqueTours(recommended).slice(0, 10) : [],
     };
   });
 
