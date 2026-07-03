@@ -3,7 +3,10 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listTrips, findMatchingTours } from "@/lib/trips.functions";
-import { MatchingToursCard, type MatchedTour } from "@/components/trips/MatchingToursCard";
+import {
+  MatchingToursCard,
+  type TourMatchResponse,
+} from "@/components/trips/MatchingToursCard";
 import { CalendarClock, MapPin, Wallet, Loader2, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/trips")({
@@ -117,14 +120,14 @@ function TripMatches({ trip }: { trip: Trip | undefined }) {
           startDate: trip!.start_date ?? undefined,
           endDate: trip!.end_date ?? undefined,
         },
-      }) as Promise<MatchedTour[]>,
+      }) as Promise<TourMatchResponse>,
   });
 
   if (!trip) return null;
 
   return (
     <MatchingToursCard
-      tours={matchesQ.data ?? null}
+      matches={matchesQ.data ?? null}
       loading={matchesQ.isLoading}
       tripId={trip.id}
       destination={trip.destination}

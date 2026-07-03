@@ -160,31 +160,108 @@ const matchInput = z.object({
   endDate: z.string().optional(),
 });
 
-// Robust date parser: handles ISO (YYYY-MM-DD), DD/MM/YYYY, DD-MM-YYYY,
-// and casual formats like "Oct 12" / "October 12, 2026" / "12 Oct 2026".
-function parseFlexibleDate(input?: string | null, fallbackYear?: number): Date | null {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const MONTHS: Record<string, number> = {
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  may: 4,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  sept: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11,
+};
+
+function cleanUtcDate(year: number, monthIndex: number, day: number): Date | null {
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || !Number.isFinite(day)) {
+    return null;
+  }
+  const date = new Date(Date.UTC(year, monthIndex, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== monthIndex ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function normalizeYear(year: string | number | undefined, fallbackYear: number) {
+  if (year == null || year === "") return fallbackYear;
+  const y = Number(year);
+  return y < 100 ? y + 2000 : y;
+}
+
+// Converts DB/user date strings into UTC-midnight Date objects before comparison.
+// Handles ISO dates, numeric dates, and casual strings like "Oct 12" / "12 Oct 2026".
+function parseCleanDate(input?: string | null, fallbackYear = new Date().getUTCFullYear()): Date | null {
   if (!input) return null;
-  const s = String(input).trim();
+  const s = String(input)
+    .trim()
+    .replace(/(\d)(st|nd|rd|th)\b/gi, "$1")
+    .replace(/,/g, " ")
+    .replace(/\s+/g, " ");
   if (!s) return null;
 
-  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (iso) return new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]));
+  let match = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (match) return cleanUtcDate(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 
-  const dmy = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
-  if (dmy) {
-    let y = +dmy[3];
-    if (y < 100) y += 2000;
-    return new Date(Date.UTC(y, +dmy[2] - 1, +dmy[1]));
+  match = s.match(/^(\d{1,2})[-/.](\d{1,2})(?:[-/.](\d{2,4}))?$/);
+  if (match) {
+    const first = Number(match[1]);
+    const second = Number(match[2]);
+    const year = normalizeYear(match[3], fallbackYear);
+    // If unambiguous, treat 20/10 as D/M. Otherwise default to M/D for casual entries like 10/12.
+    const month = first > 12 ? second - 1 : first - 1;
+    const day = first > 12 ? first : second;
+    return cleanUtcDate(year, month, day);
   }
 
-  const withYear = /\b\d{4}\b/.test(s)
-    ? s
-    : `${s} ${fallbackYear ?? new Date().getUTCFullYear()}`;
-  const parsed = new Date(withYear);
-  if (!Number.isNaN(parsed.getTime())) {
-    return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+  match = s.match(/^([a-zA-Z]+)\.?\s+(\d{1,2})(?:\s+(\d{2,4}))?$/);
+  if (match) {
+    const month = MONTHS[match[1].toLowerCase()];
+    if (month != null) return cleanUtcDate(normalizeYear(match[3], fallbackYear), month, Number(match[2]));
   }
-  return null;
+
+  match = s.match(/^(\d{1,2})\s+([a-zA-Z]+)\.?(?:\s+(\d{2,4}))?$/);
+  if (match) {
+    const month = MONTHS[match[2].toLowerCase()];
+    if (month != null) return cleanUtcDate(normalizeYear(match[3], fallbackYear), month, Number(match[1]));
+  }
+
+  const fallback = new Date(/\b\d{4}\b/.test(s) ? s : `${s} ${fallbackYear}`);
+  if (Number.isNaN(fallback.getTime())) return null;
+  return cleanUtcDate(fallback.getFullYear(), fallback.getMonth(), fallback.getDate());
+}
+
+function normalizeDateRange(start: Date | null, end: Date | null) {
+  if (!start || !end) return { start, end };
+  if (end.getTime() >= start.getTime()) return { start, end };
+  const adjustedEnd = new Date(end.getTime());
+  adjustedEnd.setUTCFullYear(adjustedEnd.getUTCFullYear() + 1);
+  return { start, end: adjustedEnd };
+}
+
+function dateOverlaps(userStart: Date, userEnd: Date, agencyStart: Date, agencyEnd: Date) {
+  return userStart.getTime() <= agencyEnd.getTime() && userEnd.getTime() >= agencyStart.getTime();
 }
 
 export const findMatchingTours = createServerFn({ method: "POST" })
@@ -219,33 +296,73 @@ export const findMatchingTours = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     console.log("[findMatchingTours] destination-matched rows:", rows?.length ?? 0);
 
-    // Relaxed JS-side date-overlap. If either user date is missing/unparseable,
-    // skip the date filter entirely so tours still surface.
-    const tripStart = parseFlexibleDate(data.startDate);
-    const tripEnd = parseFlexibleDate(data.endDate ?? data.startDate);
-    console.log("[findMatchingTours] parsed trip range:", tripStart, "→", tripEnd);
+    const parsedTripStart = parseCleanDate(data.startDate);
+    const parsedTripEnd = parseCleanDate(
+      data.endDate ?? data.startDate,
+      parsedTripStart?.getUTCFullYear(),
+    );
+    const { start: tripStart, end: tripEnd } = normalizeDateRange(
+      parsedTripStart,
+      parsedTripEnd,
+    );
+    console.log("[findMatchingTours] clean trip range:", tripStart, "→", tripEnd);
 
-    const filtered = (rows ?? []).filter((r) => {
-      if (!tripStart || !tripEnd) return true;
-      const ts = parseFlexibleDate(r.start_date);
-      const te = parseFlexibleDate(r.end_date);
-      if (!ts || !te) return true;
-      const overlap =
-        ts.getTime() <= tripEnd.getTime() && te.getTime() >= tripStart.getTime();
+    if (!tripStart || !tripEnd) {
       console.log(
-        "[findMatchingTours] tour",
-        r.agency_name,
-        r.start_date,
-        "→",
-        r.end_date,
-        "overlap?",
-        overlap,
+        "[findMatchingTours] user dates missing/unparseable; returning destination recommendations",
       );
-      return overlap;
-    });
+      return { exact: [], recommended: (rows ?? []).slice(0, 10) };
+    }
 
-    console.log("[findMatchingTours] returning:", filtered.length);
-    return filtered.slice(0, 10);
+    const exact: NonNullable<typeof rows> = [];
+    const recommended: NonNullable<typeof rows> = [];
+    const windowStart = new Date(tripStart.getTime() - 7 * DAY_MS);
+    const windowEnd = new Date(tripEnd.getTime() + 7 * DAY_MS);
+
+    for (const tour of rows ?? []) {
+      const parsedAgencyStart = parseCleanDate(tour.start_date, tripStart.getUTCFullYear());
+      const parsedAgencyEnd = parseCleanDate(
+        tour.end_date,
+        parsedAgencyStart?.getUTCFullYear() ?? tripStart.getUTCFullYear(),
+      );
+      const { start: agencyStart, end: agencyEnd } = normalizeDateRange(
+        parsedAgencyStart,
+        parsedAgencyEnd,
+      );
+
+      if (!agencyStart || !agencyEnd) {
+        console.log("[findMatchingTours] skipped unparseable agency dates:", {
+          agency: tour.agency_name,
+          start_date: tour.start_date,
+          end_date: tour.end_date,
+        });
+        continue;
+      }
+
+      const isExact = dateOverlaps(tripStart, tripEnd, agencyStart, agencyEnd);
+      const isNear = !isExact && dateOverlaps(windowStart, windowEnd, agencyStart, agencyEnd);
+      console.log("[findMatchingTours] compare:", {
+        agency: tour.agency_name,
+        userStart: tripStart.toISOString().slice(0, 10),
+        userEnd: tripEnd.toISOString().slice(0, 10),
+        agencyStart: agencyStart.toISOString().slice(0, 10),
+        agencyEnd: agencyEnd.toISOString().slice(0, 10),
+        exactOverlap: isExact,
+        withinSevenDayWindow: isNear,
+      });
+
+      if (isExact) exact.push(tour);
+      else if (isNear) recommended.push(tour);
+    }
+
+    console.log("[findMatchingTours] returning:", {
+      exact: exact.length,
+      recommended: exact.length === 0 ? recommended.length : 0,
+    });
+    return {
+      exact: exact.slice(0, 10),
+      recommended: exact.length === 0 ? recommended.slice(0, 10) : [],
+    };
   });
 
 // ---------- Dashboard: saved trips ----------
