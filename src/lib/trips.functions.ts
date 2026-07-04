@@ -384,9 +384,9 @@ export const findMatchingTours = createServerFn({ method: "POST" })
     }
 
     const exact: typeof rows = [];
-
     const recommended: typeof rows = [];
     const windowStart = new Date(tripStart.getTime() - 7 * DAY_MS);
+
     const windowEnd = new Date(tripEnd.getTime() + 7 * DAY_MS);
 
     for (const tour of rows ?? []) {
