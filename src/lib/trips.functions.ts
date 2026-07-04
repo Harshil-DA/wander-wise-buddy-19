@@ -377,21 +377,12 @@ export const findMatchingTours = createServerFn({ method: "POST" })
     const {
       start: tripStart,
       end: tripEnd,
-      shiftedYears,
     } = movePastUserRangeToFuture(normalizedTripRange.start, normalizedTripRange.end);
-    console.log("[findMatchingTours] clean trip range:", tripStart, "→", tripEnd);
-    if (shiftedYears > 0) {
-      console.log(
-        `[findMatchingTours] shifted past user dates forward by ${shiftedYears} year(s) for future tour matching`,
-      );
-    }
 
     if (!tripStart || !tripEnd) {
-      console.log(
-        "[findMatchingTours] user dates missing/unparseable; returning destination recommendations",
-      );
       return { exact: [], recommended: uniqueTours(rows).slice(0, 10) };
     }
+
 
     const exact: typeof rows = [];
     const recommended: typeof rows = [];
