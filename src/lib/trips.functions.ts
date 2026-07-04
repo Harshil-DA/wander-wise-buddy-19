@@ -389,8 +389,8 @@ export const findMatchingTours = createServerFn({ method: "POST" })
     const windowEnd = new Date(tripEnd.getTime() + 7 * DAY_MS);
 
     for (const tour of rows ?? []) {
-
       const parsedAgencyStart = parseCleanDate(tour.start_date, tripStart.getUTCFullYear());
+
       const parsedAgencyEnd = parseCleanDate(
         tour.end_date,
         parsedAgencyStart?.getUTCFullYear() ?? tripStart.getUTCFullYear(),
