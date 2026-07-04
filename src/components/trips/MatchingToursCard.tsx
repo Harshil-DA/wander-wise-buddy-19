@@ -71,8 +71,8 @@ export function MatchingToursCard({
 
   const onConnect = async (tour: MatchedTour) => {
     setBusyId(tour.id);
-
     try {
+
       const res = (await connect({
         data: {
           tourId: tour.id,
