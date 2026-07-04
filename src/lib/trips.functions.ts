@@ -364,8 +364,8 @@ export const findMatchingTours = createServerFn({ method: "POST" })
 
     const rows = (allRows ?? []).filter((tour) => destinationMatches(data.destination, tour.destination));
 
-
     const parsedTripStart = parseCleanDate(data.startDate);
+
     const parsedTripEnd = parseCleanDate(
       data.endDate ?? data.startDate,
       parsedTripStart?.getUTCFullYear(),
