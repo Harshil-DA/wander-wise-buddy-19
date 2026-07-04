@@ -70,8 +70,8 @@ export function MatchingToursCard({
   const hasAnyTours = hasExact || hasRecommended;
 
   const onConnect = async (tour: MatchedTour) => {
-
     setBusyId(tour.id);
+
     try {
       const res = (await connect({
         data: {
