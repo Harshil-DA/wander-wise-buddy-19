@@ -352,8 +352,6 @@ export const findMatchingTours = createServerFn({ method: "POST" })
 
     const destinationTokens = tokenizeDestination(data.destination);
 
-    console.log("[findMatchingTours] input:", data, "destinationTokens:", destinationTokens);
-
     const { data: allRows, error } = await supabase
       .from("agency_tours")
       .select(
@@ -363,14 +361,9 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       .limit(250);
 
     if (error) throw new Error(error.message);
-    console.log("[findMatchingTours] fetched agency rows:", allRows?.length ?? 0);
 
     const rows = (allRows ?? []).filter((tour) => destinationMatches(data.destination, tour.destination));
-    console.log(
-      "[findMatchingTours] destination-matched rows:",
-      rows.length,
-      rows.map((tour) => ({ agency: tour.agency_name, destination: tour.destination })),
-    );
+
 
     const parsedTripStart = parseCleanDate(data.startDate);
     const parsedTripEnd = parseCleanDate(
