@@ -408,9 +408,9 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       const isNear = !isExact && dateOverlaps(windowStart, windowEnd, agencyStart, agencyEnd);
 
       if (isExact) exact.push(tour);
-
       else if (isNear) recommended.push(tour);
     }
+
 
     return {
       exact: uniqueTours(exact).slice(0, 10),
