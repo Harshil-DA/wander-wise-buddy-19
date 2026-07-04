@@ -407,28 +407,16 @@ export const findMatchingTours = createServerFn({ method: "POST" })
 
       const isExact = dateOverlaps(tripStart, tripEnd, agencyStart, agencyEnd);
       const isNear = !isExact && dateOverlaps(windowStart, windowEnd, agencyStart, agencyEnd);
-      console.log("[findMatchingTours] compare:", {
-        agency: tour.agency_name,
-        userStart: tripStart.toISOString().slice(0, 10),
-        userEnd: tripEnd.toISOString().slice(0, 10),
-        agencyStart: agencyStart.toISOString().slice(0, 10),
-        agencyEnd: agencyEnd.toISOString().slice(0, 10),
-        exactOverlap: isExact,
-        withinSevenDayWindow: isNear,
-      });
 
       if (isExact) exact.push(tour);
       else if (isNear) recommended.push(tour);
     }
 
-    console.log("[findMatchingTours] returning:", {
-      exact: exact.length,
-      recommended: exact.length === 0 ? recommended.length : 0,
-    });
     return {
       exact: uniqueTours(exact).slice(0, 10),
       recommended: exact.length === 0 ? uniqueTours(recommended).slice(0, 10) : [],
     };
+
   });
 
 // ---------- Dashboard: saved trips ----------
