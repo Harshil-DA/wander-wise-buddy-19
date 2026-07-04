@@ -405,10 +405,10 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       }
 
       const isExact = dateOverlaps(tripStart, tripEnd, agencyStart, agencyEnd);
-
       const isNear = !isExact && dateOverlaps(windowStart, windowEnd, agencyStart, agencyEnd);
 
       if (isExact) exact.push(tour);
+
       else if (isNear) recommended.push(tour);
     }
 
