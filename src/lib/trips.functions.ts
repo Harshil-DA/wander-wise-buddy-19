@@ -401,13 +401,9 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       );
 
       if (!agencyStart || !agencyEnd) {
-        console.log("[findMatchingTours] skipped unparseable agency dates:", {
-          agency: tour.agency_name,
-          start_date: tour.start_date,
-          end_date: tour.end_date,
-        });
         continue;
       }
+
 
       const isExact = dateOverlaps(tripStart, tripEnd, agencyStart, agencyEnd);
       const isNear = !isExact && dateOverlaps(windowStart, windowEnd, agencyStart, agencyEnd);
