@@ -383,8 +383,8 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       return { exact: [], recommended: uniqueTours(rows).slice(0, 10) };
     }
 
-
     const exact: typeof rows = [];
+
     const recommended: typeof rows = [];
     const windowStart = new Date(tripStart.getTime() - 7 * DAY_MS);
     const windowEnd = new Date(tripEnd.getTime() + 7 * DAY_MS);
