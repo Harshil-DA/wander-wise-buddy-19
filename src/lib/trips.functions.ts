@@ -350,11 +350,8 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
 
-    const destinationTokens = tokenizeDestination(data.destination);
-
-    console.log("[findMatchingTours] input:", data, "destinationTokens:", destinationTokens);
-
     const { data: allRows, error } = await supabase
+
       .from("agency_tours")
       .select(
         "id, agency_name, title, destination, description, start_date, end_date, duration_days, price, currency, difficulty, booking_url, tags, contact_email, contact_phone, contact_website",
@@ -363,16 +360,11 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       .limit(250);
 
     if (error) throw new Error(error.message);
-    console.log("[findMatchingTours] fetched agency rows:", allRows?.length ?? 0);
 
     const rows = (allRows ?? []).filter((tour) => destinationMatches(data.destination, tour.destination));
-    console.log(
-      "[findMatchingTours] destination-matched rows:",
-      rows.length,
-      rows.map((tour) => ({ agency: tour.agency_name, destination: tour.destination })),
-    );
 
     const parsedTripStart = parseCleanDate(data.startDate);
+
     const parsedTripEnd = parseCleanDate(
       data.endDate ?? data.startDate,
       parsedTripStart?.getUTCFullYear(),
@@ -384,19 +376,9 @@ export const findMatchingTours = createServerFn({ method: "POST" })
     const {
       start: tripStart,
       end: tripEnd,
-      shiftedYears,
     } = movePastUserRangeToFuture(normalizedTripRange.start, normalizedTripRange.end);
-    console.log("[findMatchingTours] clean trip range:", tripStart, "→", tripEnd);
-    if (shiftedYears > 0) {
-      console.log(
-        `[findMatchingTours] shifted past user dates forward by ${shiftedYears} year(s) for future tour matching`,
-      );
-    }
 
     if (!tripStart || !tripEnd) {
-      console.log(
-        "[findMatchingTours] user dates missing/unparseable; returning destination recommendations",
-      );
       return { exact: [], recommended: uniqueTours(rows).slice(0, 10) };
     }
 
@@ -407,6 +389,7 @@ export const findMatchingTours = createServerFn({ method: "POST" })
 
     for (const tour of rows ?? []) {
       const parsedAgencyStart = parseCleanDate(tour.start_date, tripStart.getUTCFullYear());
+
       const parsedAgencyEnd = parseCleanDate(
         tour.end_date,
         parsedAgencyStart?.getUTCFullYear() ?? tripStart.getUTCFullYear(),
@@ -417,39 +400,23 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       );
 
       if (!agencyStart || !agencyEnd) {
-        console.log("[findMatchingTours] skipped unparseable agency dates:", {
-          agency: tour.agency_name,
-          start_date: tour.start_date,
-          end_date: tour.end_date,
-        });
         continue;
       }
 
       const isExact = dateOverlaps(tripStart, tripEnd, agencyStart, agencyEnd);
       const isNear = !isExact && dateOverlaps(windowStart, windowEnd, agencyStart, agencyEnd);
-      console.log("[findMatchingTours] compare:", {
-        agency: tour.agency_name,
-        userStart: tripStart.toISOString().slice(0, 10),
-        userEnd: tripEnd.toISOString().slice(0, 10),
-        agencyStart: agencyStart.toISOString().slice(0, 10),
-        agencyEnd: agencyEnd.toISOString().slice(0, 10),
-        exactOverlap: isExact,
-        withinSevenDayWindow: isNear,
-      });
 
       if (isExact) exact.push(tour);
       else if (isNear) recommended.push(tour);
     }
 
-    console.log("[findMatchingTours] returning:", {
-      exact: exact.length,
-      recommended: exact.length === 0 ? recommended.length : 0,
-    });
     return {
+
       exact: uniqueTours(exact).slice(0, 10),
       recommended: exact.length === 0 ? uniqueTours(recommended).slice(0, 10) : [],
     };
   });
+
 
 // ---------- Dashboard: saved trips ----------
 

@@ -69,19 +69,11 @@ export function MatchingToursCard({
   const hasRecommended = recommendedTours.length > 0;
   const hasAnyTours = hasExact || hasRecommended;
 
-  console.log("[MatchingToursCard] props →", {
-    destination,
-    tripId,
-    loading,
-    exactCount: exactTours.length,
-    recommendedCount: recommendedTours.length,
-    matches,
-  });
-
   const onConnect = async (tour: MatchedTour) => {
     setBusyId(tour.id);
     try {
       const res = (await connect({
+
         data: {
           tourId: tour.id,
           tripId,
