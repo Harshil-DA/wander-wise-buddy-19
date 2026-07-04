@@ -350,9 +350,8 @@ export const findMatchingTours = createServerFn({ method: "POST" })
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
 
-    const destinationTokens = tokenizeDestination(data.destination);
-
     const { data: allRows, error } = await supabase
+
       .from("agency_tours")
       .select(
         "id, agency_name, title, destination, description, start_date, end_date, duration_days, price, currency, difficulty, booking_url, tags, contact_email, contact_phone, contact_website",
