@@ -125,6 +125,54 @@ export type Database = {
         }
         Relationships: []
       }
+      bleisure_requests: {
+        Row: {
+          business_city: string
+          company_covers_accommodation: boolean
+          created_at: string
+          extra_days: number
+          extra_days_placement: string
+          fixed_end_date: string
+          fixed_start_date: string
+          id: string
+          leisure_budget_usd: number
+          travel_style: string
+          updated_at: string
+          user_id: string
+          with_someone: boolean
+        }
+        Insert: {
+          business_city: string
+          company_covers_accommodation?: boolean
+          created_at?: string
+          extra_days?: number
+          extra_days_placement?: string
+          fixed_end_date: string
+          fixed_start_date: string
+          id?: string
+          leisure_budget_usd?: number
+          travel_style?: string
+          updated_at?: string
+          user_id: string
+          with_someone?: boolean
+        }
+        Update: {
+          business_city?: string
+          company_covers_accommodation?: boolean
+          created_at?: string
+          extra_days?: number
+          extra_days_placement?: string
+          fixed_end_date?: string
+          fixed_start_date?: string
+          id?: string
+          leisure_budget_usd?: number
+          travel_style?: string
+          updated_at?: string
+          user_id?: string
+          with_someone?: boolean
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           created_at: string
