@@ -55,6 +55,7 @@ export function BleisureIntake({
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<BleisureRequest>(initial);
   const [submitting, setSubmitting] = useState(false);
+  const save = useServerFn(saveBleisureRequest);
 
   const update = <K extends keyof BleisureRequest>(k: K, v: BleisureRequest[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -71,7 +72,13 @@ export function BleisureIntake({
     setSubmitting(true);
     try {
       const bleisureRequest: BleisureRequest = { ...form };
-      await onSubmit?.(bleisureRequest);
+      const saved = (await save({ data: bleisureRequest })) as {
+        id: string;
+        createdAt: string;
+      };
+      await onSubmit?.({ ...bleisureRequest, id: saved.id } as BleisureRequest & {
+        id: string;
+      });
       toast.success("Bleisure preferences saved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Something went wrong");
