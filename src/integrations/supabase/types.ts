@@ -215,8 +215,12 @@ export type Database = {
           currency: string
           destination: string
           end_date: string | null
+          flex_compressible: boolean
+          flex_max_days: number | null
+          flex_min_days: number | null
           id: string
           itinerary_json: Json | null
+          near_business_hubs: string[]
           notes: string | null
           source_thread_id: string | null
           start_date: string | null
@@ -230,8 +234,12 @@ export type Database = {
           currency?: string
           destination: string
           end_date?: string | null
+          flex_compressible?: boolean
+          flex_max_days?: number | null
+          flex_min_days?: number | null
           id?: string
           itinerary_json?: Json | null
+          near_business_hubs?: string[]
           notes?: string | null
           source_thread_id?: string | null
           start_date?: string | null
@@ -245,8 +253,12 @@ export type Database = {
           currency?: string
           destination?: string
           end_date?: string | null
+          flex_compressible?: boolean
+          flex_max_days?: number | null
+          flex_min_days?: number | null
           id?: string
           itinerary_json?: Json | null
+          near_business_hubs?: string[]
           notes?: string | null
           source_thread_id?: string | null
           start_date?: string | null
