@@ -433,6 +433,20 @@ export const listTrips = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export const listTripsForBleisure = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("trips")
+      .select(
+        "id, destination, start_date, end_date, budget, currency, trip_type, notes, near_business_hubs, flex_min_days, flex_max_days, flex_compressible, created_at",
+      )
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+
 // ---------- Lead capture ----------
 
 const leadInput = z.object({
