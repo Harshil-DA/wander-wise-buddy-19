@@ -101,6 +101,13 @@ function ChatLayout() {
             <Plus className="size-4" /> New trip
           </Button>
           <Link
+            to="/bleisure"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-md bg-primary/10 text-primary hover:bg-primary/15 font-medium"
+          >
+            <Briefcase className="size-4" /> Plan a Bleisure Trip
+          </Link>
+          <Link
             to="/trips"
             onClick={() => setMobileOpen(false)}
             className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent/60"
